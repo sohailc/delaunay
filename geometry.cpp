@@ -28,10 +28,12 @@ class Matrix{
   
     private:
         matrix data;
-        int n_columns;
-        int n_rows;
     
     public:
+        
+        int n_columns;
+        int n_rows;
+        
         Matrix(vector<Vertex> columns){
             
             n_columns = columns.size();
@@ -88,6 +90,28 @@ class Matrix{
             
             linearLeastSquares(data, b, &x);
             return Matrix(x);
+        }
+        
+        bool any(bool (op)(double)){
+            for (int i=0; i<n_columns; i++){
+                for (int j=0; j<n_rows; j++){
+                    double value = EL(data, j, i);
+                    if (op(value))
+                        return true;
+                }
+            }
+            return false;
+        }
+        
+        bool all(bool (op)(double)){
+            for (int i=0; i<n_columns; i++){
+                for (int j=0; j<n_rows; j++){
+                    double value = EL(data, j, i);
+                    if (!op(value))
+                        return false;
+                }
+            }
+            return true;
         }
 };
 
@@ -157,22 +181,8 @@ class tetrahedron{ // a generalized tetrahedron in n-space
         bool contains(Vertex p){
 
             int n_vertices = vertices.size();
-            matrix a, b, x;
             vector<Vertex> matrix_columns;
-            
-            a.m = n_vertices;
-            a.n = n_vertices;
-            NEW_MAT(a);
-            
-            b.m = ndim;
-            b.n = 1;
-            NEW_MAT(b);
-            
-            x.m = ndim;
-            x.n = 1;
-            NEW_MAT(x);
-            
-            does_contain = True
+            bool does_contain = true
             
             for (int i=0; i<n_vertices-1; i++){
                 
@@ -183,24 +193,18 @@ class tetrahedron{ // a generalized tetrahedron in n-space
                             matrix_columns.push_back(vertices[j] - p0);
                 }
                 // Solve matrix_columns * x = p - p0 for x
+                Matrix x = Matrix(p - p0) / Matrix(matrix_columns);
                 // return false if any(x) > 1
-                // Matrix x = Matrix(p - p0) / Matrix(matrix_columns);
-                vertices_to_column_matrix(matrix_columns, a);
-                vertices_to_column_matrix(p - p0, b);
-                linearLeastSquares(matrix_columns, b, &x);
+                does_contain = x.any([](double v){return v > 1 ? false: true});
                 
-                for (j=0; j<ndim; j++){
-                    if (EL(x, j, 1) > 1)
-                        does_contain = false;
-                        break;
-                }
-                if (!does_contain)
-                    break;
             }
-
-            free(a.data);
-            return does_contain;
+            if (!does_contain) // no need for further checking 
+                break;
         }
+
+        free(a.data);
+        return does_contain;
+    }
 
 };
 
