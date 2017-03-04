@@ -218,7 +218,7 @@ int main(){
     Vertex v4(ndim, 2.5, 6.4, 3.8);
     Tetrahedron tetra(ndim+1, v1, v2, v3, v4);
     
-    Vertex v5 = v1 + (v2 - v1) * 0.2 + (v3 - v1) * 0.3 + (v4 - v1) * 0.9;
+    Vertex v5 = v1 + (v2 - v1) * 0.2 + (v3 - v1) * 0.3 + (v4 - v1) * 0.1;
 
     cout << tetra.contains(v5) << endl;
 
