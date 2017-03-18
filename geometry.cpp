@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cstring>
+#include <cmath>
 
 #include "linearLeastSquares.h"
 #include "geometry.hpp"
@@ -187,6 +188,10 @@ Tetrahedron::Tetrahedron(int ndim_, ...){
 	ndim = ndim_;
 }
 
+double truncate(double value, int precision){
+	return trunc(value * pow(10, precision)) / pow(10, precision);
+}
+
 bool Tetrahedron::contains(Vertex p){
 	int n_vertices = vertices.size();
 	bool does_not_contain = false;
@@ -201,25 +206,25 @@ bool Tetrahedron::contains(Vertex p){
 		// Solve matrix_columns * x = p - p0 for x
 		Matrix x = Matrix(p - p0) / Matrix(matrix_columns);
 		// return false if any(x) >= 1 or any(x) < 0
-		does_not_contain = x.any([](double v){return v >= 1 || v < 0 ? true: false;});
+		does_not_contain = x.any([](double v){double tv = truncate(v, 6); return tv > 1 || tv < 0 ? true: false;});
 		if (does_not_contain) // no need for further checking
 			break;
 	}
 	return !does_not_contain;
 }
 
-
+#ifdef TEST_GEOMETRY
 int main(){
 
-    const int ndim = 3;
-    Vertex v1(ndim, 3.4, 8.9, 5.4);
-    Vertex v2(ndim, 1.2, 5.6, 1.2);
-    Vertex v3(ndim, 4.5, 3.9, 9.1);
-    Vertex v4(ndim, 2.5, 6.4, 3.8);
-    Tetrahedron tetra(ndim+1, v1, v2, v3, v4);
-    
-    Vertex v5 = v1 + (v2 - v1) * 0.2 + (v3 - v1) * 0.3 + (v4 - v1) * 0.9;
+    const int ndim = 2;
+    Vertex v1(ndim, 1.0, 1.0);
+    Vertex v2(ndim, 0.0, 0.0);
+    Vertex v3(ndim, 0.0, 3.0);
+    Vertex v4(ndim, 0.5, 0.5);
+    Tetrahedron tetra(ndim+1, v1, v2, v3);
 
-    cout << tetra.contains(v5) << endl;
+    cout << tetra.contains(v4) << endl;
 
 }
+#endif
+

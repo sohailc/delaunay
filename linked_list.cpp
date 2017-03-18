@@ -107,7 +107,7 @@ int main(){
 	l.add(10, 4);
 	l.add(80, 120);
 	l.add(130, -4);
-	cout << l.query(10) << endl;  // should print 9
+	cout << l.query(10) << endl;  // should print 4
 	
 	return 0;
 }
