@@ -78,6 +78,10 @@ Vertex::Vertex(int ndim_, ...){
 	ndim = ndim_;
 }
 
+vector<double> Vertex :: coordinates(){
+    return this->p;
+}
+
 void Vertex::print(){
 	vector<double> :: iterator i;
 	for (i=p.begin(); i<p.end(); i++){
@@ -136,9 +140,10 @@ Matrix::~Matrix(){
 	free(data.data);
 }
 
+
 Matrix Matrix::operator/(Matrix b){
-	matrix x;
-	linearLeastSquares(b.data, data, &x);
+   matrix x;
+   linearLeastSquares(b.data, data, &x);
    return Matrix(x);
 }
 
@@ -162,13 +167,6 @@ bool Matrix::all(bool (op)(double)){
 		}
 	}
 	return true;
-}
-
-void Matrix::print(){
-	if (initialized)
-		printMat(data);
-	else
-		cout << "not initialized" << endl;
 }
 
 Tetrahedron::Tetrahedron(vector<Vertex> p){

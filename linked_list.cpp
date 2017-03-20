@@ -98,6 +98,7 @@ class LinkedList{
 		}
 };
 
+#ifdef TEST_LINKED
 int main(){
 	
 	LinkedList l;
@@ -111,3 +112,4 @@ int main(){
 	
 	return 0;
 }
+#endif

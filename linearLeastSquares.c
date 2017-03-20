@@ -468,6 +468,9 @@ int performForwardSubstitution(matrix L, matrix u, matrix *w) // given a lower t
     return EXIT_SUCCESS;
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int linearLeastSquares(matrix X, matrix Y, matrix *b)
 {
     // Solve [X][b] = [Y], the matrix [b] is n-by-o, [X] is a m-by-n matrix and [Y] is a m-by-o matrix
@@ -509,6 +512,9 @@ int linearLeastSquares(matrix X, matrix Y, matrix *b)
     return EXIT_SUCCESS;
     
 }
+#ifdef __cplusplus
+}
+#endif
 
 int polyFit(matrix x, matrix y, int order, bool throughZero, matrix *params)
 {

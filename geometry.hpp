@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <cstring>
 
+#include "linearLeastSquares.h"
+
 using namespace std;
 
 
@@ -32,6 +34,7 @@ class Vertex{
         Vertex operator*(double a);
         Vertex(vector<double> a);
         double at(int i);
+        vector<double> coordinates();
         
         void print();
 };

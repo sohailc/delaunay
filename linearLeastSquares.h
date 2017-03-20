@@ -45,7 +45,15 @@ int ATransposeTimesB(matrix A, matrix B, matrix *ATB);
 int ATimesBTranspose(matrix A, matrix B, matrix *ABT);
 int performBackSubstitution(matrix L, matrix u, matrix *w);
 int performForwardSubstitution(matrix L, matrix u, matrix *w);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 int linearLeastSquares(matrix X, matrix Y, matrix *b);
+#ifdef __cplusplus
+}
+#endif
+
 double vectorMagnitude(matrix A);
 int polyFit(matrix x, matrix y, int order, bool throughZero, matrix *params);
 
