@@ -22,21 +22,23 @@ public:
     bool is_leaf();
     void print();
     vector<vector<double> > coordinates();
+    bool contains_root_vertex();
 };
 
 class VertexTree{
 
 private:
     list<Vertex> vertices;
-    Node* root;
+    Node * root;
+    void add_root_vertices(list<Vertex>&);
     list<Node*> nodes;
+    Node * find(Vertex);
+    void add_vertex(Vertex);
 
 public:
 
-    VertexTree(list<Vertex*>);
+    VertexTree(list<Vertex>);
     ~VertexTree();
-    Node *find(Vertex);
-    void add_vertex(Vertex);
     list<Node*> get_leaves();
     list<Node*> get_nodes();
 };

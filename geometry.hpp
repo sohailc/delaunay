@@ -16,12 +16,13 @@ using namespace std;
 class Vertex{
 
     private:
+        unsigned index;
         vector<double> p;
         Vertex element_wise_operation(Vertex a, Vertex b, double (op)(double, double));
         Vertex element_wise_operation(Vertex a, double b, double (op)(double, double));
 
     public:
-        int ndim;
+        unsigned ndim;
 			
 			// The constructor         
         Vertex(int ndim_, ...);  // so we can initialize a vertex like Vertex p(ndim, x, y, z);
@@ -34,6 +35,8 @@ class Vertex{
         Vertex operator*(double a);
         Vertex(vector<double> a);
         double at(int i);
+        void set_index(int);
+        int get_index();
         vector<double> coordinates();
         
         void print();
@@ -72,5 +75,7 @@ class Tetrahedron{ // a generalized tetrahedron in n-space
 
         bool contains(Vertex p);
 };
+
+vector<vector<double> > find_bounding_box(list<Vertex>);
 
 #endif

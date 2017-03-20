@@ -1,6 +1,7 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 #include "geometry.hpp"
 #include "face_tree.h"
@@ -66,6 +67,17 @@ bool Node :: is_leaf(){
     return true;
 }
 
+bool Node :: contains_root_vertex(){
+    unsigned index;
+    for (auto v = this->node_vertices.begin(); v!=this->node_vertices.end(); ++v){
+        unsigned ndim = (*v)->ndim;
+        index = (*v)->get_index();
+        if (index <= ndim)
+            return true;
+    }
+    return false;
+}
+
 void Node :: print(){
 
     for (auto i=node_vertices.begin(); i!=node_vertices.end(); i++){
@@ -83,16 +95,60 @@ vector<vector<double> > Node :: coordinates(){
     return c;
 }
 
-VertexTree :: VertexTree(list<Vertex*> root_vertices){
-    root = new Node(root_vertices);
+void VertexTree :: add_root_vertices(list<Vertex> &vertices){
+
+    vector<vector<double> > aabb = find_bounding_box(vertices);
+    double diagonal = 0;
+    vector<double> max = aabb[0];
+    vector<double> min = aabb[1];
+
+    for (unsigned ndim=0; ndim<max.size(); ndim++){
+        diagonal += pow(max[ndim] - min[ndim], 2);
+    }
+    diagonal = sqrt(diagonal);
+
+    Vertex root_vertex0(min);
+    vertices.push_front(root_vertex0);
+
+    for (unsigned ndim=0; ndim<max.size(); ndim++){
+        vector<double> r;
+        for (unsigned i=0; i<max.size(); i++){
+            r.push_back(0.0);
+        }
+        r[ndim] = 2 * diagonal;
+        Vertex root_vertexN = Vertex(min) + Vertex(r);
+        vertices.push_front(root_vertexN);
+    }
+}
+
+VertexTree :: VertexTree(list<Vertex> vertices){
+
+    add_root_vertices(vertices);
+    list<Vertex*> root_vertices;
+
+    int count = 0;
+    for (auto v = vertices.begin(); v!=vertices.end(); ++v, count++){
+        v->set_index(count);
+        int ndim = v->ndim;
+
+        if (count < ndim + 1){
+            this->vertices.push_back(*v);
+            root_vertices.push_back(&this->vertices.back());
+            continue;
+        }else if (count == ndim + 1){
+            this->root = new Node(root_vertices);
+        }
+
+        add_vertex(*v);
+    }
 }
 
 VertexTree :: ~VertexTree(){
-    delete root;
+    delete this->root;
 }
 
 Node * VertexTree :: find(Vertex p){
-    Node *n = root;
+    Node *n = this->root;
 
     while (!n->is_leaf()){
         n = n->next(p);
@@ -102,6 +158,7 @@ Node * VertexTree :: find(Vertex p){
 
 void VertexTree :: add_vertex(Vertex vertex){
     Node *n = find(vertex);
+
     this->vertices.push_back(vertex);
     list<Node*> children = n->make_children(&this->vertices.back());
     for (auto child=children.begin(); child!=children.end(); ++child){
@@ -122,7 +179,8 @@ list<Node*> VertexTree :: get_leaves(){
 list<Node*> VertexTree :: get_nodes(){
     list<Node*> nodes;
     for (auto node=this->nodes.begin(); node!=this->nodes.end(); ++node){
-        nodes.push_back(*node);
+        //if (!(*node)->contains_root_vertex())
+            nodes.push_back(*node);
     }
     return nodes;
 }

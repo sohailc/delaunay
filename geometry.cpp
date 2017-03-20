@@ -1,10 +1,12 @@
 #include <cstdarg>
 #include <iostream>
 #include <vector>
+#include <list>
 #include <stdlib.h>
 #include <stdio.h>
 #include <cstring>
 #include <cmath>
+#include <float.h>
 
 #include "linearLeastSquares.h"
 #include "geometry.hpp"
@@ -80,6 +82,14 @@ Vertex::Vertex(int ndim_, ...){
 
 vector<double> Vertex :: coordinates(){
     return this->p;
+}
+
+void Vertex :: set_index(int index){
+    this->index = index;
+}
+
+int Vertex :: get_index(){
+    return this->index;
 }
 
 void Vertex::print(){
@@ -210,6 +220,44 @@ bool Tetrahedron::contains(Vertex p){
 	}
 	return !does_not_contain;
 }
+
+
+vector<vector<double> > find_bounding_box(list<Vertex> vertices){
+    /*    The outer vector is length two: {max, min}
+     *    The inner vector is length ndim; containing the maxima and the
+     *    minima along each of the dimensions.
+     */
+
+    vector<double> max; // max value along each dimension
+    vector<double> min; // min value along each dimension
+    vector<vector<double> > aabb;
+
+    for (auto v=vertices.begin(); v!=vertices.end(); ++v){
+
+        if (v == vertices.begin()){
+            int ndim = v->ndim;
+            for (int dim=0; dim<ndim; dim++){
+                max.push_back(-DBL_MAX);
+                min.push_back(DBL_MAX);
+            }
+        }
+        vector<double> coordinates = v->coordinates();
+
+        int dim = 0;
+        for (auto c=coordinates.begin(); c<coordinates.end(); ++c, dim++){
+            if (*c > max[dim]){
+                max[dim] = *c;
+            }
+            if (*c < min[dim]){
+                min[dim] = *c;
+            }
+        }
+    }
+    aabb.push_back(max);
+    aabb.push_back(min);
+    return aabb;
+}
+
 
 #ifdef TEST_GEOMETRY
 int main(){

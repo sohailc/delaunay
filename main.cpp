@@ -177,35 +177,29 @@ public:
 int main(int argc, char *argv[])
 {
 
-    list<Vertex*> root_vertices;
+    list<Vertex> vertices;
 
-    Vertex v1(2, 0.0, 0.0);
-    root_vertices.push_back(&v1);
-
-    Vertex v2(2, 3.0, 0.0);
-    root_vertices.push_back(&v2);
-
-    Vertex v3(2, 0.0, 3.0);
-    root_vertices.push_back(&v3);
-
-    VertexTree tree(root_vertices);
-
-    Vertex v_body1(2, 1.0, 1.0);
-    tree.add_vertex(v_body1);
+    Vertex v_body1(2, 0.5, 1.5);
+    vertices.push_back(v_body1);
 
     Vertex v_body2(2, 1.0, 0.5);
-    tree.add_vertex(v_body2);
+    vertices.push_back(v_body2);
 
-    Vertex v_body3(2, 0.75, 0.6);
-    tree.add_vertex(v_body3);
+    Vertex v_body3(2, 2.0, 3.0);
+    vertices.push_back(v_body3);
+
+    Vertex v_body4(2, -2.0, 3.0);
+    vertices.push_back(v_body4);
+
+    VertexTree tree(vertices);
 
     QApplication app(argc, argv);
 
     SimplePlot w(500, 500);
-    w.set_extents(-5, -5, 5, 5);
+    w.set_extents(-5, -1, 10, 10);
 
 
-    auto leaves = tree.get_leaves();
+    auto leaves = tree.get_nodes();
     int count=0;
 
     for (auto leaf=leaves.begin(); leaf!=leaves.end(); ++leaf, count++){
