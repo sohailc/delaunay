@@ -157,26 +157,15 @@ Matrix Matrix::operator/(Matrix b){
    return Matrix(x);
 }
 
-bool Matrix::any(bool (op)(double)){
+int Matrix::any(int (op)(double)){
 	for (int i=0; i<n_columns; i++){
 		for (int j=0; j<n_rows; j++){
 			double value = EL(data, j, i);
 			if (op(value))
-				return true;
+                return 1;
 		}
 	}
-	return false;
-}
-
-bool Matrix::all(bool (op)(double)){
-	for (int i=0; i<n_columns; i++){
-		for (int j=0; j<n_rows; j++){
-			double value = EL(data, j, i);
-			if (!op(value))
-				return false;
-		}
-	}
-	return true;
+    return 0;
 }
 
 Tetrahedron::Tetrahedron(vector<Vertex> p){
@@ -214,11 +203,12 @@ bool Tetrahedron::contains(Vertex p){
 		// Solve matrix_columns * x = p - p0 for x
 		Matrix x = Matrix(p - p0) / Matrix(matrix_columns);
 		// return false if any(x) >= 1 or any(x) < 0
-		does_not_contain = x.any([](double v){double tv = truncate(v, 6); return tv > 1 || tv < 0 ? true: false;});
+        does_not_contain = x.any([](double v){double tv = truncate(v, 6); return tv > 1 || tv < 0 ? 1: 0;});
+
 		if (does_not_contain) // no need for further checking
-			break;
+            return false;
 	}
-	return !does_not_contain;
+    return true;
 }
 
 

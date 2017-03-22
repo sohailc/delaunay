@@ -59,8 +59,7 @@ class Matrix{
         Matrix(matrix a);
         ~Matrix();
         Matrix operator/(Matrix b);
-        bool any(bool (op)(double));
-        bool all(bool (op)(double));
+        int any(int (op)(double));
         void print();
 };
 

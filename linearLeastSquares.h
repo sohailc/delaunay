@@ -4,7 +4,8 @@
 #define EXIT_SUCCESS 0
 #define EXIT_FAIL 1 
 
-#define bool int
+#include <stdbool.h>
+
 #define true 1
 #define false 0
 

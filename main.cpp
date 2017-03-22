@@ -199,14 +199,12 @@ int main(int argc, char *argv[])
     w.set_extents(-5, -1, 10, 10);
 
 
-    auto leaves = tree.get_nodes();
-    int count=0;
+    auto edges = tree.get_edges();
 
-    for (auto leaf=leaves.begin(); leaf!=leaves.end(); ++leaf, count++){
-        vector<vector<double> > coordinates = (*leaf)->coordinates();
-        w.draw_shape(coordinates);
-
+    for (auto coordinates=edges.begin(); coordinates!=edges.end(); ++coordinates){
+        w.draw_shape(*coordinates);
     }
+
     w.show();
     return app.exec();
 }

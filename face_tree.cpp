@@ -8,22 +8,22 @@
 
 using namespace std;
 
-Node :: Node(list<Vertex*> vertices){
-    this->node_vertices = vertices;
+Face :: Face(list<Vertex*> vertices){
+    this->vertices = vertices;
 }
 
-bool Node :: contains_vertex(Vertex p){
+bool Face :: contains_vertex(Vertex p){
     vector<Vertex> t;
 
-    for (auto i=node_vertices.begin(); i!=node_vertices.end(); ++i){
+    for (auto i=vertices.begin(); i!=vertices.end(); ++i){
         t.push_back(**i);
     }
     return Tetrahedron(t).contains(p);
 }
 
-Node * Node :: next(Vertex p){
+Face * Face :: next(Vertex p){
     bool found = false;
-    list<Node>:: iterator child;
+    list<Face>:: iterator child;
     for (child=children.begin(); child!=children.end(); ++child){
         if ((*child).contains_vertex(p)){
             found = true;
@@ -37,23 +37,23 @@ Node * Node :: next(Vertex p){
     }
 }
 
-list<Node*> Node :: make_children(Vertex *p){
+list<Face*> Face :: make_children(Vertex *p){
 
-    list<Node*> new_children;
+    list<Face*> new_children;
 
-    for (auto i=node_vertices.begin(); i!=node_vertices.end(); ++i){
+    for (auto i=vertices.begin(); i!=vertices.end(); ++i){
 
         list<Vertex*> new_node_vertices;
         new_node_vertices.push_back(p);
 
-        for (auto j=node_vertices.begin(); j!=node_vertices.end(); ++j){
+        for (auto j=vertices.begin(); j!=vertices.end(); ++j){
             if (*i==*j){
                 continue;
             }
             new_node_vertices.push_back(*j);
         }
 
-        Node child(new_node_vertices);
+        Face child(new_node_vertices);
         this->children.push_back(child);
         new_children.push_back(&this->children.back());
     }
@@ -61,15 +61,15 @@ list<Node*> Node :: make_children(Vertex *p){
     return new_children;
 }
 
-bool Node :: is_leaf(){
+bool Face :: is_leaf(){
     if (children.size() > 0)
         return false;
     return true;
 }
 
-bool Node :: contains_root_vertex(){
+bool Face :: contains_root_vertex(){
     unsigned index;
-    for (auto v = this->node_vertices.begin(); v!=this->node_vertices.end(); ++v){
+    for (auto v = this->vertices.begin(); v!=this->vertices.end(); ++v){
         unsigned ndim = (*v)->ndim;
         index = (*v)->get_index();
         if (index <= ndim)
@@ -78,21 +78,30 @@ bool Node :: contains_root_vertex(){
     return false;
 }
 
-void Node :: print(){
+void Face :: print(){
 
-    for (auto i=node_vertices.begin(); i!=node_vertices.end(); i++){
+    for (auto i=vertices.begin(); i!=vertices.end(); i++){
         (*i)->print();
     }
 }
 
-vector<vector<double> > Node :: coordinates(){
+vector<vector<double> > Face :: coordinates(){
     vector<vector<double> > c;
 
-    for(auto vertex=this->node_vertices.begin(); vertex!=this->node_vertices.end(); ++vertex){
+    for(auto vertex=this->vertices.begin(); vertex!=this->vertices.end(); ++vertex){
         c.push_back((*vertex)->coordinates());
     }
 
     return c;
+}
+
+vector<unsigned> Face:: indices(){
+    vector<unsigned> idx;
+
+    for(auto vertex=this->vertices.begin(); vertex!=this->vertices.end(); ++vertex){
+        idx.push_back((*vertex)->get_index());
+    }
+    return idx;
 }
 
 void VertexTree :: add_root_vertices(list<Vertex> &vertices){
@@ -121,9 +130,42 @@ void VertexTree :: add_root_vertices(list<Vertex> &vertices){
     }
 }
 
+void VertexTree :: link_face_to_edges(Face * face){
+
+    Edge *edge;
+    unsigned i, j, edge_index;
+    vector<unsigned> indices = face->indices();
+    vector<unsigned> :: iterator idx;
+
+    for (idx=indices.begin(); idx<indices.end(); ++idx){
+
+        if (idx==indices.begin()){
+            i = indices.back();
+        }else{
+            i = *(idx-1);
+        }
+        j = *idx;
+
+        edge_index = i + j * this->n_vertices;
+        edge = this->edge_map[edge_index];
+
+        if (edge == NULL){
+            Edge new_edge;
+            new_edge.index = edge_index;
+            new_edge.member_faces.push_back(face);
+            this->edges.push_back(new_edge);
+            this->edge_map[edge_index] = &this->edges.back();
+        }else{
+            edge->member_faces.push_back(face);
+        }
+    }
+}
+
 VertexTree :: VertexTree(list<Vertex> vertices){
 
     add_root_vertices(vertices);
+    this->n_vertices = vertices.size();
+
     list<Vertex*> root_vertices;
 
     int count = 0;
@@ -133,10 +175,12 @@ VertexTree :: VertexTree(list<Vertex> vertices){
 
         if (count < ndim + 1){
             this->vertices.push_back(*v);
+            this->vertex_map[v->get_index()] = &this->vertices.back();
             root_vertices.push_back(&this->vertices.back());
             continue;
         }else if (count == ndim + 1){
-            this->root = new Node(root_vertices);
+            this->root = new Face(root_vertices);
+            link_face_to_edges(this->root);
         }
 
         add_vertex(*v);
@@ -147,8 +191,8 @@ VertexTree :: ~VertexTree(){
     delete this->root;
 }
 
-Node * VertexTree :: find(Vertex p){
-    Node *n = this->root;
+Face * VertexTree :: find(Vertex p){
+    Face *n = this->root;
 
     while (!n->is_leaf()){
         n = n->next(p);
@@ -157,52 +201,49 @@ Node * VertexTree :: find(Vertex p){
 }
 
 void VertexTree :: add_vertex(Vertex vertex){
-    Node *n = find(vertex);
+    Face *n = find(vertex);
+
+    // TODO: We have the face (n) in which the new vertex is placed.
+    // In order to make a Delaunay triangulation we need to find all
+    // vertices in neighbouring faces which fall in the circumfence
+    // of this face.
 
     this->vertices.push_back(vertex);
-    list<Node*> children = n->make_children(&this->vertices.back());
+    this->vertex_map[vertex.get_index()] = &this->vertices.back();
+
+    list<Face*> children = n->make_children(&this->vertices.back());
     for (auto child=children.begin(); child!=children.end(); ++child){
-        this->nodes.push_back(*child);
+        this->faces.push_back(*child);
+        link_face_to_edges(*child);
     }
 }
 
-list<Node*> VertexTree :: get_leaves(){
-    list<Node*> leaves;
-    for (auto node=this->nodes.begin(); node!=this->nodes.end(); ++node){
-        if ((*node)->is_leaf()){
-            leaves.push_back(*node);
-        }
-    }
-    return leaves;
-}
+vector<vector<vector<double> > > VertexTree :: get_edges(){
+    /*   Output shape is [n_edges, 2, ndim]
+     */
 
-list<Node*> VertexTree :: get_nodes(){
-    list<Node*> nodes;
-    for (auto node=this->nodes.begin(); node!=this->nodes.end(); ++node){
-        //if (!(*node)->contains_root_vertex())
-            nodes.push_back(*node);
+    unsigned i, j, edge_index;
+    Vertex *p1, *p2;
+    vector<vector<vector<double> > > out;
+
+    for (auto edge=this->edges.begin(); edge!=this->edges.end(); ++edge){
+        edge_index = edge->index;
+        i = edge_index % this->n_vertices;
+        j = edge_index / this->n_vertices; // integer division
+
+        p1 = this->vertex_map[i];
+        p2 = this->vertex_map[j];
+
+        vector<double> coordinates1 = p1->coordinates();
+        vector<double> coordinates2 = p2->coordinates();
+        vector<vector<double> > coordinates = {coordinates1, coordinates2};
+        out.push_back(coordinates);
     }
-    return nodes;
+    return out;
 }
 
 #ifdef TEST_FACE
 int main(){
-
-    VertexTree v;
-
-    Vertex v1(2, 1.0, 1.0);
-    v.add_vertex(v1);
-
-    Vertex v2(2, 1.0, 0.5);
-    v.add_vertex(v2);
-
-    auto leaves = v.find_leaves();
-    int count=0;
-
-    for (auto leaf=leaves.begin(); leaf!=leaves.end(); ++leaf, count++){
-        cout << "leaf " << count << endl;
-        (*leaf)->print();
-    }
 
     return 0;
 }
