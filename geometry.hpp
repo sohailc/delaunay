@@ -24,8 +24,9 @@ class Vertex{
     public:
         unsigned ndim;
 			
-			// The constructor         
+        // The constructor s
         Vertex(int ndim_, ...);  // so we can initialize a vertex like Vertex p(ndim, x, y, z);
+        Vertex(vector<double> a);
 
         Vertex operator-(Vertex a);
         Vertex operator+(Vertex a);
@@ -33,7 +34,9 @@ class Vertex{
         Vertex operator+(double a);
         Vertex operator/(double a);
         Vertex operator*(double a);
-        Vertex(vector<double> a);
+
+        double norm();
+
         double at(int i);
         void set_index(int);
         int get_index();
@@ -54,11 +57,20 @@ class Matrix{
         int n_columns;
         int n_rows;
         bool initialized = false;
+
+        // constructors
         Matrix(vector<Vertex> columns);
+        Matrix(vector<vector<double> > columns);
         Matrix(Vertex column);
+        Matrix(vector<double> column);
         Matrix(matrix a);
+
+        // destructor
         ~Matrix();
-        Matrix operator/(Matrix b);
+
+        vector<vector<double> > get_data(); // get the data column wise
+        Matrix operator/(Matrix b); // solve a linear equation like Ax = b for x
+        double at(int, int);
         int any(int (op)(double));
         void print();
 };
@@ -76,5 +88,6 @@ class Tetrahedron{ // a generalized tetrahedron in n-space
 };
 
 vector<vector<double> > find_bounding_box(list<Vertex>);
+pair<double, Vertex> fit_sphere(list<Vertex> points);
 
 #endif

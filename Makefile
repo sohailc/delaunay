@@ -33,7 +33,7 @@ MOVE          = mv -f
 TAR           = tar -cf
 COMPRESS      = gzip -9f
 DISTNAME      = name_of_the_app1.0.0
-DISTDIR = /home/sohail/development/delaunay-qt/.tmp/name_of_the_app1.0.0
+DISTDIR = /home/sohail/development/delaunay/.tmp/name_of_the_app1.0.0
 LINK          = g++
 LFLAGS        = -m64 -Wl,-O1
 LIBS          = $(SUBLIBS) -L/usr/X11R6/lib64 -lQt5Widgets -lQt5Gui -lQt5Core -lGL -lpthread 
@@ -50,12 +50,10 @@ OBJECTS_DIR   = ./
 
 SOURCES       = main.cpp \
 		face_tree.cpp \
-		linked_list.cpp \
 		geometry.cpp \
 		linearLeastSquares.c 
 OBJECTS       = main.o \
 		face_tree.o \
-		linked_list.o \
 		geometry.o \
 		linearLeastSquares.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
@@ -123,7 +121,6 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		geometry.hpp \
 		face_tree.h main.cpp \
 		face_tree.cpp \
-		linked_list.cpp \
 		geometry.cpp \
 		linearLeastSquares.c
 QMAKE_TARGET  = name_of_the_app
@@ -302,7 +299,7 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents linearLeastSquares.h geometry.hpp face_tree.h $(DISTDIR)/
-	$(COPY_FILE) --parents main.cpp face_tree.cpp linked_list.cpp geometry.cpp linearLeastSquares.c $(DISTDIR)/
+	$(COPY_FILE) --parents main.cpp face_tree.cpp geometry.cpp linearLeastSquares.c $(DISTDIR)/
 
 
 clean: compiler_clean 
@@ -350,9 +347,6 @@ face_tree.o: face_tree.cpp geometry.hpp \
 		linearLeastSquares.h \
 		face_tree.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o face_tree.o face_tree.cpp
-
-linked_list.o: linked_list.cpp 
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o linked_list.o linked_list.cpp
 
 geometry.o: geometry.cpp linearLeastSquares.h \
 		geometry.hpp
