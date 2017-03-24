@@ -62,7 +62,7 @@ Face * Face :: next(Vertex p){
         throw runtime_error("Vertex not found at current node");
     }
 }
-
+ //**************** obsolete ****************************
 list<Face*> Face :: make_children(Vertex *p){
 
     list<Face*> new_children;
@@ -85,6 +85,11 @@ list<Face*> Face :: make_children(Vertex *p){
     }
 
     return new_children;
+}
+//*********************************************************
+
+void Face :: register_children(list<Face> children){
+    this->children = children;
 }
 
 bool Face :: is_leaf(){
@@ -184,7 +189,8 @@ VertexTree :: VertexTree(list<Vertex> vertices){
             link_face_to_edges(this->root);
         }
 
-        add_vertex(*v);
+        //add_vertex(*v);
+        add_vertex_new(*v);
     }
 }
 
@@ -205,9 +211,10 @@ void VertexTree :: add_edge_to_list(Edge edge, vector<unsigned> key){
     this->edge_map[key] = &this->edges.back();
 }
 
-void VertexTree :: link_face_to_edges(Face * face){
+vector<vector<unsigned> > get_edge_keys(Face face){
 
-    vector<unsigned> vertex_indices = face->vertex_indices();
+    vector<unsigned> vertex_indices = face.vertex_indices();
+    vector<vector<unsigned> > keys;
 
     for(auto idx1=vertex_indices.begin(); idx1<vertex_indices.end(); ++idx1){
 
@@ -218,14 +225,25 @@ void VertexTree :: link_face_to_edges(Face * face){
                 key.push_back(*idx2);
             }
         }
+        keys.push_back(key);
+    }
+    return keys;
+}
 
-        Edge *edge = this->get_edge(key);
+
+void VertexTree :: link_face_to_edges(Face * face){
+
+    vector<vector<unsigned> > edge_keys = get_edge_keys(*face);
+
+    for(auto key=edge_keys.begin(); key<edge_keys.end(); ++key){
+
+        Edge *edge = this->get_edge(*key);
 
         if (edge == NULL){
             Edge new_edge;
             new_edge.member_faces.push_back(face);
-            new_edge.index = key;
-            add_edge_to_list(new_edge, key);
+            new_edge.index = *key;
+            add_edge_to_list(new_edge, *key);
         }else{
             edge->member_faces.push_back(face);
         }
@@ -243,8 +261,6 @@ Face * VertexTree :: find_containing_face(Vertex p){
 
 void VertexTree :: add_vertex(Vertex vertex){
 
-    //vector<Face*> faces = find_all_circumcircles(vertex);
-
     Face *n = find_containing_face(vertex);
 
     this->vertices.push_back(vertex);
@@ -256,8 +272,131 @@ void VertexTree :: add_vertex(Vertex vertex){
     }
 }
 
+
+void VertexTree :: add_vertex_new(Vertex vertex){
+
+    vector<Face*> faces = find_all_circumcircles(vertex);
+    vector<Edge> edge_list;
+
+    unsigned new_vertex_index = vertex.get_index();
+    this->vertices.push_back(vertex);
+    this->vertex_map[new_vertex_index] = &this->vertices.back();
+
+    for (auto face=faces.begin(); face<faces.end(); ++face){
+        merge_edge_lists(edge_list, **face);
+    }
+
+    list<Face> new_faces;
+    for (auto edge=edge_list.begin(); edge<edge_list.end(); ++edge){ // every edge will make a new face
+
+        list<Vertex*> new_face_vertices = {this->vertex_map[new_vertex_index]};
+
+        for(auto vertex_index=edge->index.begin(); vertex_index<edge->index.end(); ++vertex_index){
+            new_face_vertices.push_back(this->vertex_map[*vertex_index]);
+        }
+
+        Face new_face(new_face_vertices);
+        link_face_to_edges(&new_face);
+        new_faces.push_back(new_face);
+    }
+
+    for (auto face=faces.begin(); face<faces.end(); ++face){
+        (*face)->register_children(new_faces);
+    }
+
+}
+
+
+vector<Face*> VertexTree :: find_all_circumcircles(Vertex vertex){
+
+    vector<Face*> faces;
+    Face *n = find_containing_face(vertex);
+
+    faces.push_back(n);
+
+    list<Face*> candidates = find_neighbouring_faces(n);
+
+    for (auto candidate = candidates.begin(); candidate!=candidates.end(); ++candidate){
+
+        if ((*candidate)->in_circumcircle(vertex)){
+
+            faces.push_back(*candidate);
+            list<Face*> new_candidates = find_neighbouring_faces(*candidate, candidates); // find the neighbours of this candidate
+            // but exclude the candidates already present in the list (second argument)
+            candidates.merge(new_candidates);
+        }
+    }
+
+    return faces;
+}
+
+list<Face*> VertexTree :: find_neighbouring_faces(Face* face){
+    list<Face*> blacklist; // an empty blacklist
+    return find_neighbouring_faces(face, blacklist);
+}
+
+list<Face*> VertexTree :: find_neighbouring_faces(Face *face, list<Face*> blacklist){
+    /*   Find all neighbours of a face, except if its index occures in the blacklist.
+     */
+
+    list<Face*> neighbours;
+
+    Edge *edge;
+
+    blacklist.push_back(face); // the face determining the neighbours is always in the black list. We do not want
+    // this function to return itself as a neighbour, or else we will get stuck in an infinite loop
+
+    vector<vector<unsigned> > edge_keys = get_edge_keys(*face);
+
+    for (auto edge_key=edge_keys.begin(); edge_key<edge_keys.end(); ++edge_key){
+
+        edge = get_edge(*edge_key);
+
+        // loop over the member faces of the edge.
+        for (auto member_face=edge->member_faces.begin(); member_face<edge->member_faces.end(); ++member_face){
+
+            bool in_blacklist = find(blacklist.begin(), blacklist.end(), *member_face) != blacklist.end();
+
+            if (in_blacklist){
+                continue;
+            }
+            if ((*member_face)->is_leaf())
+            {
+                neighbours.push_back(*member_face);
+                break; // there should only be one qualifying face per edge.
+            }
+        }
+    }
+
+    return neighbours;
+}
+
+void VertexTree :: merge_edge_lists(vector<Edge>& edge_list, Face face){
+
+    // Calculate the edges of the face and find the one which is in the edge list. Delete that edge
+    // from the edge list and insert the other edges from face into the list of edges.
+
+   vector<vector<unsigned> > face_edge_keys = get_edge_keys(face);
+   vector<vector<unsigned> > :: iterator face_edge_key;
+
+   for (face_edge_key=face_edge_keys.begin();  face_edge_key<face_edge_keys.end();  ++face_edge_key){
+
+       Edge *new_edge = get_edge(*face_edge_key);
+       vector<Edge> :: const_iterator i = find(edge_list.begin(), edge_list.end(), *new_edge);
+
+       if (i != edge_list.end()){
+           edge_list.erase(i);
+       }else{
+           edge_list.push_back(*new_edge);
+       }
+   }
+}
+
+
 vector<vector<vector<double> > > VertexTree :: get_edges(){
     /*   Output shape is [n_edges, 2, ndim]
+     *   TODO: MAKE THIS FUNCTION ND AGNOSTIC
+     *
      */
 
     vector<unsigned> edge_index;

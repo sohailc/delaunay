@@ -5,6 +5,7 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include "geometry.hpp"
 
@@ -25,7 +26,8 @@ public:
     bool in_circumcircle(Vertex);  // determine if a vertex falls within the circum
     // circle of the face
     Face *next(Vertex);
-    list<Face*> make_children(Vertex *);
+    list<Face*> make_children(Vertex *); // obsolete
+    void register_children(list<Face> children);
     bool is_leaf();
     void print();
     vector<vector<double> > coordinates();
@@ -34,10 +36,15 @@ public:
     bool contains_root_vertex();
 };
 
-typedef struct Edge{
+class Edge{
+
+public:
     vector<unsigned> index;
     vector<Face*> member_faces; // The faces which contain this edge
-} Edge;
+    bool operator==(const Edge lhs){
+        return equal(this->index.begin(), this->index.end(), lhs.index.begin());
+    }
+};
 
 
 class VertexTree{
@@ -71,8 +78,10 @@ private:
     // the face given
     list<Face*> find_neighbouring_faces(Face*, list<Face*>); // find all faces which neighbour
     // the face given. This overloaded function allows the inclusion of a blacklist.
+    void merge_edge_lists(vector<Edge>& edge_list, Face face);
 
     void add_vertex(Vertex);
+    void add_vertex_new(Vertex);
 
 public:
 
