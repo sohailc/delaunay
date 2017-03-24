@@ -88,6 +88,6 @@ class Tetrahedron{ // a generalized tetrahedron in n-space
 };
 
 vector<vector<double> > find_bounding_box(list<Vertex>);
-pair<double, Vertex> fit_sphere(list<Vertex> points);
+pair<double, Vertex> fit_sphere(vector<Vertex> points);
 
 #endif

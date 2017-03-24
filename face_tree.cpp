@@ -1,6 +1,12 @@
+/*  This module calculates the delaunay traingulation based on the
+ *  Bowyer–Watson algorithm. See:
+ *  https://en.wikipedia.org/wiki/Bowyer%E2%80%93Watson_algorithm
+ */
+
 #include <list>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 #include <cmath>
 
 #include "geometry.hpp"
@@ -12,13 +18,32 @@ Face :: Face(list<Vertex*> vertices){
     this->vertices = vertices;
 }
 
+void Face :: set_index(unsigned index){
+    this->index = index;
+}
+
 bool Face :: contains_vertex(Vertex p){
     vector<Vertex> t;
 
-    for (auto i=vertices.begin(); i!=vertices.end(); ++i){
+    for (auto i=this->vertices.begin(); i!=this->vertices.end(); ++i){
         t.push_back(**i);
     }
     return Tetrahedron(t).contains(p);
+}
+
+bool Face :: in_circumcircle(Vertex p){
+
+    vector<Vertex> t;
+
+    for (auto i=this->vertices.begin(); i!=this->vertices.end(); ++i){
+        t.push_back(**i);
+    }
+
+    pair<double, Vertex> r_center = fit_sphere(t);
+    double r = r_center.first;
+    Vertex center = r_center.second;
+
+    return r - (center-p).norm() < 1E-10;
 }
 
 Face * Face :: next(Vertex p){
@@ -95,7 +120,7 @@ vector<vector<double> > Face :: coordinates(){
     return c;
 }
 
-vector<unsigned> Face:: indices(){
+vector<unsigned> Face:: vertex_indices(){
     vector<unsigned> idx;
 
     for(auto vertex=this->vertices.begin(); vertex!=this->vertices.end(); ++vertex){
@@ -130,11 +155,33 @@ void VertexTree :: add_root_vertices(list<Vertex> &vertices){
     }
 }
 
+unsigned VertexTree :: calculate_edge_index(unsigned i, unsigned j){
+
+    if (j < i){    // flip i and j
+        unsigned tmp = i;
+        i = j;
+        j = tmp;
+    }
+    return i + j * this->n_vertices;
+}
+
+unsigned VertexTree :: calculate_face_index(vector<unsigned> vertex_indices){
+
+    sort(vertex_indices.begin(), vertex_indices.end());
+    unsigned face_index = 0;
+    int p = 0;
+
+    for(auto i=vertex_indices.begin(); i<vertex_indices.end(); ++i, p++){
+        face_index += *i * pow(this->n_vertices, p);
+    }
+    return face_index;
+}
+
 void VertexTree :: link_face_to_edges(Face * face){
 
     Edge *edge;
     unsigned i, j, edge_index;
-    vector<unsigned> indices = face->indices();
+    vector<unsigned> indices = face->vertex_indices();
     vector<unsigned> :: iterator idx;
 
     for (idx=indices.begin(); idx<indices.end(); ++idx){
@@ -146,7 +193,7 @@ void VertexTree :: link_face_to_edges(Face * face){
         }
         j = *idx;
 
-        edge_index = i + j * this->n_vertices;
+        edge_index = calculate_edge_index(i, j);
         edge = this->edge_map[edge_index];
 
         if (edge == NULL){
@@ -169,6 +216,7 @@ VertexTree :: VertexTree(list<Vertex> vertices){
     list<Vertex*> root_vertices;
 
     int count = 0;
+
     for (auto v = vertices.begin(); v!=vertices.end(); ++v, count++){
         v->set_index(count);
         int ndim = v->ndim;
@@ -180,6 +228,9 @@ VertexTree :: VertexTree(list<Vertex> vertices){
             continue;
         }else if (count == ndim + 1){
             this->root = new Face(root_vertices);
+            unsigned root_index = calculate_face_index(this->root->vertex_indices());
+            this->root->set_index(root_index);
+            this->face_map[root_index] = this->root;
             link_face_to_edges(this->root);
         }
 
@@ -191,7 +242,7 @@ VertexTree :: ~VertexTree(){
     delete this->root;
 }
 
-Face * VertexTree :: find(Vertex p){
+Face * VertexTree :: find_containing_face(Vertex p){
     Face *n = this->root;
 
     while (!n->is_leaf()){
@@ -200,20 +251,128 @@ Face * VertexTree :: find(Vertex p){
     return n;
 }
 
-void VertexTree :: add_vertex(Vertex vertex){
-    Face *n = find(vertex);
+vector<Edge> merge_edge_lists(vector<Edge> edge_list, Face face){
 
-    // TODO: We have the face (n) in which the new vertex is placed.
-    // In order to make a Delaunay triangulation we need to find all
-    // vertices in neighbouring faces which fall in the circumfence
-    // of this face.
+    // Calculate the edges of the face and find the one which is in the edge list. Delete that edge
+    // from the edge list and insert the other edges from face into the list of edges.
+
+    vertex_indices = face.vertex_indices;
+    vector<Edge> face_edges;
+    vector<unsigned> face_edge_indices;
+
+    for (auto idx=vertex_indices.begin(); idx<vertex_indices.end(); ++idx){
+
+        if (idx==vertex_indices.begin()){
+            i = vertex_indices.back();
+        }else{
+            i = *(idx-1);
+        }
+        j = *idx;
+
+        edge_index = calculate_edge_index(i, j);
+        face_edge = this->edge_map[edge_index];
+        face_edges.push_back(face_edge);
+        face_edge_indices.push_back(edge_index);
+    }
+
+    for(auto idx=edge_list.begin(); idx<edge_list.end(); ++idx){
+
+        if (find(face_edge_indices.begin(), face_edge_indices.end(), *idx.index) != face_edge_indices.end())
+        {
+            // left off here
+        }
+    }
+
+}
+
+vector<Face*> VertexTree :: find_all_circumcircles(Vertex vertex){
+
+    vector<Face*> faces;
+    Face *n = find_containing_face(vertex);
+
+    faces.push_back(n);
+
+    list<Face*> candidates = find_neighbouring_faces(n);
+
+    for (auto candidate = candidates.begin(); candidate!=candidates.end(); ++candidate){
+
+        if ((*candidate)->in_circumcircle(vertex)){
+
+            faces.push_back(*candidate);
+            list<Face*> new_candidates = find_neighbouring_faces(*candidate, candidates); // find the neighbours of this candidate
+            // but exclude the candidates already present in the list (second argument)
+            candidates.merge(new_candidates);
+        }
+    }
+
+    return faces;
+}
+
+list<Face*> VertexTree :: find_neighbouring_faces(Face* face){
+    list<Face*> blacklist; // an empty blacklist
+    return find_neighbouring_faces(face, blacklist);
+}
+
+list<Face*> VertexTree :: find_neighbouring_faces(Face* face, list<Face*> blacklist){
+    /*   Find all neighbours of a face, except if its index occures in the blacklist.
+     */
+
+    list<Face*> neighbours;
+
+    unsigned i, j, edge_index;
+    Edge *edge;
+
+    blacklist.push_back(face); // the face determining the neighbours is always in the black list. We do not want
+    // this function to return itself as a neighbour, or else we will get stuck in an infinite loop
+
+    vector<unsigned> vertex_indices = face->vertex_indices();
+
+    for (auto idx=vertex_indices.begin(); idx<vertex_indices.end(); ++idx){
+
+        if (idx==vertex_indices.begin()){
+            i = vertex_indices.back();
+        }else{
+            i = *(idx-1);
+        }
+        j = *idx;
+
+        edge_index = calculate_edge_index(i, j);
+        edge = this->edge_map[edge_index];
+
+        // loop over the member faces of the edge.
+        for (auto member_face=edge->member_faces.begin(); member_face<edge->member_faces.end(); ++member_face){
+
+            bool in_blacklist = find(blacklist.begin(), blacklist.end(), *member_face) != blacklist.end();
+
+            if (in_blacklist){
+                continue;
+            }
+            if ((*member_face)->is_leaf())
+            {
+                neighbours.push_back(*member_face);
+                break; // there should only be one qualifying face per edge.
+            }
+        }
+    }
+
+    return neighbours;
+}
+
+void VertexTree :: add_vertex(Vertex vertex){
+
+    vector<Face*> faces = find_all_circumcircles(vertex);
+
+    Face *n = find_containing_face(vertex);
 
     this->vertices.push_back(vertex);
     this->vertex_map[vertex.get_index()] = &this->vertices.back();
 
     list<Face*> children = n->make_children(&this->vertices.back());
     for (auto child=children.begin(); child!=children.end(); ++child){
-        this->faces.push_back(*child);
+
+        unsigned child_index = calculate_face_index((*child)->vertex_indices());
+        (*child)->set_index(child_index);
+        this->face_map[child_index] = *child;
         link_face_to_edges(*child);
     }
 }
@@ -241,6 +400,7 @@ vector<vector<vector<double> > > VertexTree :: get_edges(){
     }
     return out;
 }
+
 
 #ifdef TEST_FACE
 int main(){

@@ -312,7 +312,7 @@ vector<vector<double> > find_bounding_box(list<Vertex> vertices){
     return aabb;
 }
 
-pair<double, Vertex> fit_sphere(list<Vertex> points){
+pair<double, Vertex> fit_sphere(vector<Vertex> points){
     /* given a set of N points in N-1 dimensions, find the hypersphere
      * through these points. We derive inspiration from the solution
      * presented in
@@ -421,7 +421,7 @@ int main(){
 
 void test_2d(){
 
-    list<Vertex> points = {
+    vector<Vertex> points = {
         Vertex(2, 4.0, 1.0),
         Vertex(2, 6.0, 9.0),
         Vertex(2, 9.0, 4.0)
@@ -438,7 +438,7 @@ void test_2d(){
 
 void test_3d(){
 
-    list<Vertex> points = {
+    vector<Vertex> points = {
         Vertex(3, 4.0, 1.0, 5.0),
         Vertex(3, 6.0, 9.0, 2.0),
         Vertex(3, 9.0, 4.0, -3.0),
