@@ -11,6 +11,7 @@
 
 #include "geometry.hpp"
 #include "face_tree.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -18,7 +19,7 @@ Face :: Face(list<Vertex*> vertices){
     this->vertices = vertices;
 }
 
-void Face :: set_index(unsigned index){
+void Face :: set_index(vector<unsigned> index){
     this->index = index;
 }
 
@@ -155,58 +156,6 @@ void VertexTree :: add_root_vertices(list<Vertex> &vertices){
     }
 }
 
-unsigned VertexTree :: calculate_edge_index(unsigned i, unsigned j){
-
-    if (j < i){    // flip i and j
-        unsigned tmp = i;
-        i = j;
-        j = tmp;
-    }
-    return i + j * this->n_vertices;
-}
-
-unsigned VertexTree :: calculate_face_index(vector<unsigned> vertex_indices){
-
-    sort(vertex_indices.begin(), vertex_indices.end());
-    unsigned face_index = 0;
-    int p = 0;
-
-    for(auto i=vertex_indices.begin(); i<vertex_indices.end(); ++i, p++){
-        face_index += *i * pow(this->n_vertices, p);
-    }
-    return face_index;
-}
-
-void VertexTree :: link_face_to_edges(Face * face){
-
-    Edge *edge;
-    unsigned i, j, edge_index;
-    vector<unsigned> indices = face->vertex_indices();
-    vector<unsigned> :: iterator idx;
-
-    for (idx=indices.begin(); idx<indices.end(); ++idx){
-
-        if (idx==indices.begin()){
-            i = indices.back();
-        }else{
-            i = *(idx-1);
-        }
-        j = *idx;
-
-        edge_index = calculate_edge_index(i, j);
-        edge = this->edge_map[edge_index];
-
-        if (edge == NULL){
-            Edge new_edge;
-            new_edge.index = edge_index;
-            new_edge.member_faces.push_back(face);
-            this->edges.push_back(new_edge);
-            this->edge_map[edge_index] = &this->edges.back();
-        }else{
-            edge->member_faces.push_back(face);
-        }
-    }
-}
 
 VertexTree :: VertexTree(list<Vertex> vertices){
 
@@ -222,15 +171,16 @@ VertexTree :: VertexTree(list<Vertex> vertices){
         int ndim = v->ndim;
 
         if (count < ndim + 1){
+
             this->vertices.push_back(*v);
             this->vertex_map[v->get_index()] = &this->vertices.back();
             root_vertices.push_back(&this->vertices.back());
             continue;
         }else if (count == ndim + 1){
+
             this->root = new Face(root_vertices);
-            unsigned root_index = calculate_face_index(this->root->vertex_indices());
+            vector<unsigned> root_index = range<vector<unsigned> >(0, ndim + 1);
             this->root->set_index(root_index);
-            this->face_map[root_index] = this->root;
             link_face_to_edges(this->root);
         }
 
@@ -242,6 +192,46 @@ VertexTree :: ~VertexTree(){
     delete this->root;
 }
 
+Edge * VertexTree :: get_edge(vector<unsigned> key){
+    // given vertex indices, get the pointer to the edge structure
+    sort(key.begin(), key.end());
+    return this->edge_map[key];
+}
+
+void VertexTree :: add_edge_to_list(Edge edge, vector<unsigned> key){
+    // make sure that the edge can be found given a key
+    sort(key.begin(), key.end());
+    this->edges.push_back(edge);
+    this->edge_map[key] = &this->edges.back();
+}
+
+void VertexTree :: link_face_to_edges(Face * face){
+
+    vector<unsigned> vertex_indices = face->vertex_indices();
+
+    for(auto idx1=vertex_indices.begin(); idx1<vertex_indices.end(); ++idx1){
+
+        vector<unsigned> key;
+
+        for(auto idx2=vertex_indices.begin(); idx2<vertex_indices.end(); ++idx2){
+            if (idx1!=idx2){
+                key.push_back(*idx2);
+            }
+        }
+
+        Edge *edge = this->get_edge(key);
+
+        if (edge == NULL){
+            Edge new_edge;
+            new_edge.member_faces.push_back(face);
+            new_edge.index = key;
+            add_edge_to_list(new_edge, key);
+        }else{
+            edge->member_faces.push_back(face);
+        }
+    }
+}
+
 Face * VertexTree :: find_containing_face(Vertex p){
     Face *n = this->root;
 
@@ -251,116 +241,9 @@ Face * VertexTree :: find_containing_face(Vertex p){
     return n;
 }
 
-vector<Edge> merge_edge_lists(vector<Edge> edge_list, Face face){
-
-    // Calculate the edges of the face and find the one which is in the edge list. Delete that edge
-    // from the edge list and insert the other edges from face into the list of edges.
-
-    vertex_indices = face.vertex_indices;
-    vector<Edge> face_edges;
-    vector<unsigned> face_edge_indices;
-
-    for (auto idx=vertex_indices.begin(); idx<vertex_indices.end(); ++idx){
-
-        if (idx==vertex_indices.begin()){
-            i = vertex_indices.back();
-        }else{
-            i = *(idx-1);
-        }
-        j = *idx;
-
-        edge_index = calculate_edge_index(i, j);
-        face_edge = this->edge_map[edge_index];
-        face_edges.push_back(face_edge);
-        face_edge_indices.push_back(edge_index);
-    }
-
-    for(auto idx=edge_list.begin(); idx<edge_list.end(); ++idx){
-
-        if (find(face_edge_indices.begin(), face_edge_indices.end(), *idx.index) != face_edge_indices.end())
-        {
-            // left off here
-        }
-    }
-
-}
-
-vector<Face*> VertexTree :: find_all_circumcircles(Vertex vertex){
-
-    vector<Face*> faces;
-    Face *n = find_containing_face(vertex);
-
-    faces.push_back(n);
-
-    list<Face*> candidates = find_neighbouring_faces(n);
-
-    for (auto candidate = candidates.begin(); candidate!=candidates.end(); ++candidate){
-
-        if ((*candidate)->in_circumcircle(vertex)){
-
-            faces.push_back(*candidate);
-            list<Face*> new_candidates = find_neighbouring_faces(*candidate, candidates); // find the neighbours of this candidate
-            // but exclude the candidates already present in the list (second argument)
-            candidates.merge(new_candidates);
-        }
-    }
-
-    return faces;
-}
-
-list<Face*> VertexTree :: find_neighbouring_faces(Face* face){
-    list<Face*> blacklist; // an empty blacklist
-    return find_neighbouring_faces(face, blacklist);
-}
-
-list<Face*> VertexTree :: find_neighbouring_faces(Face* face, list<Face*> blacklist){
-    /*   Find all neighbours of a face, except if its index occures in the blacklist.
-     */
-
-    list<Face*> neighbours;
-
-    unsigned i, j, edge_index;
-    Edge *edge;
-
-    blacklist.push_back(face); // the face determining the neighbours is always in the black list. We do not want
-    // this function to return itself as a neighbour, or else we will get stuck in an infinite loop
-
-    vector<unsigned> vertex_indices = face->vertex_indices();
-
-    for (auto idx=vertex_indices.begin(); idx<vertex_indices.end(); ++idx){
-
-        if (idx==vertex_indices.begin()){
-            i = vertex_indices.back();
-        }else{
-            i = *(idx-1);
-        }
-        j = *idx;
-
-        edge_index = calculate_edge_index(i, j);
-        edge = this->edge_map[edge_index];
-
-        // loop over the member faces of the edge.
-        for (auto member_face=edge->member_faces.begin(); member_face<edge->member_faces.end(); ++member_face){
-
-            bool in_blacklist = find(blacklist.begin(), blacklist.end(), *member_face) != blacklist.end();
-
-            if (in_blacklist){
-                continue;
-            }
-            if ((*member_face)->is_leaf())
-            {
-                neighbours.push_back(*member_face);
-                break; // there should only be one qualifying face per edge.
-            }
-        }
-    }
-
-    return neighbours;
-}
-
 void VertexTree :: add_vertex(Vertex vertex){
 
-    vector<Face*> faces = find_all_circumcircles(vertex);
+    //vector<Face*> faces = find_all_circumcircles(vertex);
 
     Face *n = find_containing_face(vertex);
 
@@ -369,10 +252,6 @@ void VertexTree :: add_vertex(Vertex vertex){
 
     list<Face*> children = n->make_children(&this->vertices.back());
     for (auto child=children.begin(); child!=children.end(); ++child){
-
-        unsigned child_index = calculate_face_index((*child)->vertex_indices());
-        (*child)->set_index(child_index);
-        this->face_map[child_index] = *child;
         link_face_to_edges(*child);
     }
 }
@@ -381,17 +260,15 @@ vector<vector<vector<double> > > VertexTree :: get_edges(){
     /*   Output shape is [n_edges, 2, ndim]
      */
 
-    unsigned i, j, edge_index;
+    vector<unsigned> edge_index;
     Vertex *p1, *p2;
     vector<vector<vector<double> > > out;
 
     for (auto edge=this->edges.begin(); edge!=this->edges.end(); ++edge){
         edge_index = edge->index;
-        i = edge_index % this->n_vertices;
-        j = edge_index / this->n_vertices; // integer division
 
-        p1 = this->vertex_map[i];
-        p2 = this->vertex_map[j];
+        p1 = this->vertex_map[edge_index[0]];
+        p2 = this->vertex_map[edge_index[1]];
 
         vector<double> coordinates1 = p1->coordinates();
         vector<double> coordinates2 = p2->coordinates();

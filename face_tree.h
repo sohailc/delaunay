@@ -11,7 +11,7 @@
 class Face{
 
 private:
-    unsigned index;
+    vector<unsigned> index;
     list<Vertex*> vertices;
     list<Face> children;
 
@@ -19,7 +19,7 @@ public:
 
     Face(list<Vertex*>); // contructor
 
-    void set_index(unsigned);
+    void set_index(vector<unsigned>);
     bool contains_vertex(Vertex); // determine if a vertex falls within the bounds
     // of the face. A vertex on the face edge and in its interior will return true
     bool in_circumcircle(Vertex);  // determine if a vertex falls within the circum
@@ -35,11 +35,10 @@ public:
 };
 
 typedef struct Edge{
-    unsigned index; // if the edge is spanned by vertices i and j, the edge
-    // index is i + j * n_vertices, where n_vertices is the total number of
-    // vertices in the tree
+    vector<unsigned> index;
     vector<Face*> member_faces; // The faces which contain this edge
 } Edge;
+
 
 class VertexTree{
 
@@ -54,19 +53,13 @@ private:
     // corresponding vertex structure.
 
     list<Edge> edges;
-    map<unsigned, Edge*> edge_map; // given an edge index, find the pointer to the corresponding
-    // edge struct. This will quickly give us access to member faces.
-    unsigned calculate_edge_index(unsigned, unsigned); // given vertex indices i and j
-    // find the index of the edge between these vertices. This is equal to i + j * n_vertices if i < j
+    map<vector<unsigned>, Edge*> edge_map;
+    Edge *get_edge(vector<unsigned>); // given indices of N vertices in N-1 space, find
+    // the pointer to the corresponding edge struct.
+    void add_edge_to_list(Edge, vector<unsigned>); // make sure we can find the edge
+    // with the get_edge method
 
-    map<unsigned, Face*> face_map; // given a face index find the pointer to the correspondig
-    // face struct.
-    unsigned calculate_face_index(vector<unsigned>); // given vertex indices, calculate the face index
-    // of the face being spanned by the vertices. In 2D the vector has length 3 since we have three
-    // vertices spanning the face. In 3D this is length 4. The face index is given by
-    // sum(idx_i * n_vertices**i, i=0..ndim) assuming that the indexes as ordered small to large
-    void link_face_to_edges(Face * face); // Given an edge index, we want to find all faces which share
-    // this edge
+    void link_face_to_edges(Face * face);
 
     Face * root;
 
