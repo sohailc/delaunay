@@ -18,6 +18,7 @@ class PlotArea : public QWidget{
 
 private:
     vector<QPoint> qvertices;
+    QLabel *title_label;
     QLabel *mouse_pos_label;
     vector<vector<vector<double> > > edges;
     bool recalc_edges=true;
@@ -29,7 +30,18 @@ public:
         this->mouse_pos_label = new QLabel(this);
         this->mouse_pos_label->setGeometry(450, 450, 50, 50);
         this->mouse_pos_label->setStyleSheet("background-color:gray;");
+
+        this->title_label = new QLabel(this);
+        this->title_label->setGeometry(150, 0, 200, 50);
+        this->title_label->setText(QString("Click anywhere with the mouse"));
+        this->title_label->setStyleSheet("background-color:white;");
+
         this->setMouseTracking(true);
+    }
+
+    ~PlotArea(){
+        delete mouse_pos_label;
+        delete title_label;
     }
 
 protected:
@@ -92,6 +104,7 @@ protected:
 int main(int argc, char *argv[]){
 
     QApplication app(argc, argv);
+    app.setApplicationName("Delaunay Triangulator");
     PlotArea plt;
     plt.show();
     return app.exec();
