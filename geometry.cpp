@@ -275,16 +275,10 @@ bool Tetrahedron::contains(Vertex p){
     return true;
 }
 
-
-vector<vector<double> > find_bounding_box(list<Vertex> vertices){
-    /*    The outer vector is length two: {max, min}
-     *    The inner vector is length ndim; containing the maxima and the
-     *    minima along each of the dimensions.
-     */
+pair<Vertex, Vertex> find_bounding_box(list<Vertex> vertices){
 
     vector<double> max; // max value along each dimension
     vector<double> min; // min value along each dimension
-    vector<vector<double> > aabb;
 
     for (auto v=vertices.begin(); v!=vertices.end(); ++v){
 
@@ -307,9 +301,9 @@ vector<vector<double> > find_bounding_box(list<Vertex> vertices){
             }
         }
     }
-    aabb.push_back(max);
-    aabb.push_back(min);
-    return aabb;
+
+    return pair<Vertex, Vertex> {Vertex(max), Vertex(min)};
+
 }
 
 pair<double, Vertex> fit_sphere(vector<Vertex> points){

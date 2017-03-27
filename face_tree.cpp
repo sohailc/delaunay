@@ -108,32 +108,26 @@ vector<unsigned> Face:: vertex_indices(){
 
 void VertexTree :: add_root_vertices(list<Vertex> &vertices){
 
-    vector<vector<double> > aabb = find_bounding_box(vertices);
-    double diagonal = 0;
-    vector<double> max = aabb[0];
-    vector<double> min = aabb[1];
+    pair<Vertex, Vertex> aabb = find_bounding_box(vertices);
 
-    for (unsigned ndim=0; ndim<max.size(); ndim++){
-        diagonal += pow(max[ndim] - min[ndim], 2);
+    Vertex max = aabb.first;
+    Vertex min = aabb.second;
+    int ndim = max.ndim;
+
+    Vertex mid = (max+min) / 2 ;
+    max = (max - mid) * 100 + mid;
+    min = (min - mid) * 100 + mid;
+    double diagonal = (max-min).norm();
+
+    vertices.push_front(min);
+
+    for (int dim=0; dim<ndim; dim++){
+
+        vector<double> r = fill<vector<double> >(0, ndim, 0.0);
+
+        r[dim] = 2 * diagonal;
+        vertices.push_front(min + Vertex(r));
     }
-    diagonal = sqrt(diagonal);
-
-    Vertex root_vertex0(min);
-    vertices.push_front(root_vertex0);
-
-    for (unsigned ndim=0; ndim<max.size(); ndim++){
-        vector<double> r;
-        for (unsigned i=0; i<max.size(); i++){
-            r.push_back(0.0);
-        }
-        r[ndim] = 2 * diagonal;
-        Vertex root_vertexN = Vertex(min) + Vertex(r);
-        vertices.push_front(root_vertexN);
-    }
-
-    //vertices.push_front(Vertex(2, 10.0, 0.0));
-    //vertices.push_front(Vertex(2, 0.0, 10.0));
-    //vertices.push_front(Vertex(2, 0.0, 0.0));
 }
 
 
@@ -150,17 +144,20 @@ VertexTree :: VertexTree(list<Vertex> vertices){
         v->set_index(count);
         int ndim = v->ndim;
 
-        if (count < ndim + 1){
+        if (count <= ndim){
 
             this->vertices.push_back(*v);
             this->vertex_map[v->get_index()] = &this->vertices.back();
             root_vertices.push_back(&this->vertices.back());
-            continue;
-        }else if (count == ndim + 1){
 
-            Face root(root_vertices);
-            this->faces.push_back(root);
-            link_face_to_edges(&this->faces.back());
+            if (count == ndim){
+
+                Face root(root_vertices);
+                this->faces.push_back(root);
+                link_face_to_edges(&this->faces.back());
+            }
+
+            continue;
         }
 
         add_vertex(*v);
@@ -278,9 +275,14 @@ vector<Face*> VertexTree :: find_all_circumcircles(Vertex vertex){
         if ((*candidate)->in_circumcircle(vertex)){
 
             faces.push_back(*candidate);
-            list<Face*> new_candidates = find_neighbouring_faces(*candidate, candidates); // find the neighbours of this candidate
-            // but exclude the candidates already present in the list (second argument)
-            candidates.merge(new_candidates);
+
+            //list<Face*> blacklist = candidates;
+            //blacklist.push_back(n);
+
+            //list<Face*> new_candidates = find_neighbouring_faces(*candidate, blacklist);
+            // find the neighbours of this candidate
+            // but exclude the candidates already present in the list
+            //candidates.merge(new_candidates);
         }
     }
 
@@ -362,7 +364,11 @@ vector<vector<vector<double> > > VertexTree :: get_edges(){
 
     for (auto edge=this->edges.begin(); edge!=this->edges.end(); ++edge){
 
+        if(edge->contains_root_vertices())
+            continue;
+
         bool atleast_one_leaf = false;
+
         for(auto face=edge->member_faces.begin(); face<edge->member_faces.end(); ++face){
             if ((*face)->is_leaf())
             {

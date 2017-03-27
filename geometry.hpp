@@ -87,7 +87,7 @@ class Tetrahedron{ // a generalized tetrahedron in n-space
         bool contains(Vertex p);
 };
 
-vector<vector<double> > find_bounding_box(list<Vertex>);
+pair<Vertex, Vertex> find_bounding_box(list<Vertex> vertices);
 pair<double, Vertex> fit_sphere(vector<Vertex> points);
 
 #endif

@@ -41,6 +41,17 @@ public:
     bool operator==(const Edge lhs){
         return equal(this->index.begin(), this->index.end(), lhs.index.begin());
     }
+
+    bool contains_root_vertices(){
+        int ndim = this->index.size();
+
+        for (int dim=0; dim<=ndim; dim++){
+            if (find(this->index.begin(),this->index.end(), dim) != this->index.end()){
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 
