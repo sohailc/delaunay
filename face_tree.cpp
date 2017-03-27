@@ -15,12 +15,8 @@
 
 using namespace std;
 
-Face :: Face(list<Vertex*> vertices){
+Face :: Face(vector<Vertex*> vertices){
     this->vertices = vertices;
-}
-
-void Face :: set_index(vector<unsigned> index){
-    this->index = index;
 }
 
 bool Face :: contains_vertex(Vertex p){
@@ -44,51 +40,26 @@ bool Face :: in_circumcircle(Vertex p){
     double r = r_center.first;
     Vertex center = r_center.second;
 
-    return r - (center-p).norm() < 1E-10;
+    return (center-p).norm() - r < 1E-10;
 }
 
 Face * Face :: next(Vertex p){
     bool found = false;
-    list<Face>:: iterator child;
+    list<Face*>:: iterator child;
     for (child=children.begin(); child!=children.end(); ++child){
-        if ((*child).contains_vertex(p)){
+        if ((*child)->contains_vertex(p)){
             found = true;
             break;
         }
     }
     if (found){
-        return &(*child);
+        return *child;
     }else{
         throw runtime_error("Vertex not found at current node");
     }
 }
- //**************** obsolete ****************************
-list<Face*> Face :: make_children(Vertex *p){
 
-    list<Face*> new_children;
-
-    for (auto i=vertices.begin(); i!=vertices.end(); ++i){
-
-        list<Vertex*> new_node_vertices;
-        new_node_vertices.push_back(p);
-
-        for (auto j=vertices.begin(); j!=vertices.end(); ++j){
-            if (*i==*j){
-                continue;
-            }
-            new_node_vertices.push_back(*j);
-        }
-
-        Face child(new_node_vertices);
-        this->children.push_back(child);
-        new_children.push_back(&this->children.back());
-    }
-
-    return new_children;
-}
-//*********************************************************
-
-void Face :: register_children(list<Face> children){
+void Face :: register_children(list<Face*> children){
     this->children = children;
 }
 
@@ -159,6 +130,10 @@ void VertexTree :: add_root_vertices(list<Vertex> &vertices){
         Vertex root_vertexN = Vertex(min) + Vertex(r);
         vertices.push_front(root_vertexN);
     }
+
+    //vertices.push_front(Vertex(2, 10.0, 0.0));
+    //vertices.push_front(Vertex(2, 0.0, 10.0));
+    //vertices.push_front(Vertex(2, 0.0, 0.0));
 }
 
 
@@ -167,7 +142,7 @@ VertexTree :: VertexTree(list<Vertex> vertices){
     add_root_vertices(vertices);
     this->n_vertices = vertices.size();
 
-    list<Vertex*> root_vertices;
+    vector<Vertex*> root_vertices;
 
     int count = 0;
 
@@ -183,20 +158,15 @@ VertexTree :: VertexTree(list<Vertex> vertices){
             continue;
         }else if (count == ndim + 1){
 
-            this->root = new Face(root_vertices);
-            vector<unsigned> root_index = range<vector<unsigned> >(0, ndim + 1);
-            this->root->set_index(root_index);
-            link_face_to_edges(this->root);
+            Face root(root_vertices);
+            this->faces.push_back(root);
+            link_face_to_edges(&this->faces.back());
         }
 
-        //add_vertex(*v);
-        add_vertex_new(*v);
+        add_vertex(*v);
     }
 }
 
-VertexTree :: ~VertexTree(){
-    delete this->root;
-}
 
 Edge * VertexTree :: get_edge(vector<unsigned> key){
     // given vertex indices, get the pointer to the edge structure
@@ -251,7 +221,7 @@ void VertexTree :: link_face_to_edges(Face * face){
 }
 
 Face * VertexTree :: find_containing_face(Vertex p){
-    Face *n = this->root;
+    Face *n = &this->faces.front();
 
     while (!n->is_leaf()){
         n = n->next(p);
@@ -259,51 +229,38 @@ Face * VertexTree :: find_containing_face(Vertex p){
     return n;
 }
 
+
 void VertexTree :: add_vertex(Vertex vertex){
-
-    Face *n = find_containing_face(vertex);
-
-    this->vertices.push_back(vertex);
-    this->vertex_map[vertex.get_index()] = &this->vertices.back();
-
-    list<Face*> children = n->make_children(&this->vertices.back());
-    for (auto child=children.begin(); child!=children.end(); ++child){
-        link_face_to_edges(*child);
-    }
-}
-
-
-void VertexTree :: add_vertex_new(Vertex vertex){
-
-    vector<Face*> faces = find_all_circumcircles(vertex);
-    vector<Edge> edge_list;
 
     unsigned new_vertex_index = vertex.get_index();
     this->vertices.push_back(vertex);
     this->vertex_map[new_vertex_index] = &this->vertices.back();
 
+    vector<Face*> faces = find_all_circumcircles(vertex);
+    vector<Edge> edge_list;
+
     for (auto face=faces.begin(); face<faces.end(); ++face){
         merge_edge_lists(edge_list, **face);
     }
 
-    list<Face> new_faces;
+    list<Face*> new_faces;
     for (auto edge=edge_list.begin(); edge<edge_list.end(); ++edge){ // every edge will make a new face
 
-        list<Vertex*> new_face_vertices = {this->vertex_map[new_vertex_index]};
+        vector<Vertex*> new_face_vertices = {this->vertex_map[new_vertex_index]};
 
         for(auto vertex_index=edge->index.begin(); vertex_index<edge->index.end(); ++vertex_index){
             new_face_vertices.push_back(this->vertex_map[*vertex_index]);
         }
 
         Face new_face(new_face_vertices);
-        link_face_to_edges(&new_face);
-        new_faces.push_back(new_face);
+        this->faces.push_back(new_face);
+        link_face_to_edges(&this->faces.back());
+        new_faces.push_back(&this->faces.back());
     }
 
     for (auto face=faces.begin(); face<faces.end(); ++face){
         (*face)->register_children(new_faces);
     }
-
 }
 
 
@@ -404,6 +361,18 @@ vector<vector<vector<double> > > VertexTree :: get_edges(){
     vector<vector<vector<double> > > out;
 
     for (auto edge=this->edges.begin(); edge!=this->edges.end(); ++edge){
+
+        bool atleast_one_leaf = false;
+        for(auto face=edge->member_faces.begin(); face<edge->member_faces.end(); ++face){
+            if ((*face)->is_leaf())
+            {
+                atleast_one_leaf = true;
+                break;
+            }
+        }
+        if (!atleast_one_leaf)
+            continue;
+
         edge_index = edge->index;
 
         p1 = this->vertex_map[edge_index[0]];

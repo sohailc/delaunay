@@ -12,22 +12,19 @@
 class Face{
 
 private:
-    vector<unsigned> index;
-    list<Vertex*> vertices;
-    list<Face> children;
+    vector<Vertex*> vertices;
+    list<Face*> children;
 
 public:
 
-    Face(list<Vertex*>); // contructor
+    Face(vector<Vertex*>); // contructor
 
-    void set_index(vector<unsigned>);
     bool contains_vertex(Vertex); // determine if a vertex falls within the bounds
     // of the face. A vertex on the face edge and in its interior will return true
     bool in_circumcircle(Vertex);  // determine if a vertex falls within the circum
     // circle of the face
     Face *next(Vertex);
-    list<Face*> make_children(Vertex *); // obsolete
-    void register_children(list<Face> children);
+    void register_children(list<Face*> children);
     bool is_leaf();
     void print();
     vector<vector<double> > coordinates();
@@ -68,7 +65,7 @@ private:
 
     void link_face_to_edges(Face * face);
 
-    Face * root;
+    list<Face> faces;
 
     void add_root_vertices(list<Vertex>&);
     Face * find_containing_face(Vertex); // find the face which contains this vertex
@@ -81,12 +78,10 @@ private:
     void merge_edge_lists(vector<Edge>& edge_list, Face face);
 
     void add_vertex(Vertex);
-    void add_vertex_new(Vertex);
 
 public:
 
     VertexTree(list<Vertex>);
-    ~VertexTree();
     list<Face*> get_leaves();
     list<Face*> get_nodes();
     vector<vector<vector<double> > > get_edges();

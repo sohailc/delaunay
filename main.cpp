@@ -6,6 +6,7 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <cmath>
 
 #include "face_tree.h"
 #include "geometry.hpp"
@@ -95,8 +96,8 @@ public:
 
                 x_begin_pixels = (x_begin - this->x_min) / (this->x_max - this->x_min) * this->plot_size_width;
                 x_end_pixels = ((*ixy)[0] - this->x_min) / (this->x_max - this->x_min) * this->plot_size_width;
-                y_begin_pixels = (y_begin - this->y_min) / (this->y_max - this->y_min) * this->plot_size_hight;
-                y_end_pixels =  ((*ixy)[1] - this->y_min) / (this->y_max - this->y_min) * this->plot_size_hight;
+                y_begin_pixels = (this->y_max - y_begin) / (this->y_max - this->y_min) * this->plot_size_hight;
+                y_end_pixels =  (this->y_max - (*ixy)[1]) / (this->y_max - this->y_min) * this->plot_size_hight;
 
                 Line l(x_begin_pixels, y_begin_pixels, x_end_pixels, y_end_pixels);
                 this->lines.push_back(l);
@@ -185,7 +186,7 @@ int main(int argc, char *argv[])
     Vertex v_body2(2, 1.0, 0.5);
     vertices.push_back(v_body2);
 
-    Vertex v_body3(2, 2.0, 3.0);
+    Vertex v_body3(2, 2.0, 2.5);
     vertices.push_back(v_body3);
 
     Vertex v_body4(2, -2.0, 3.0);
@@ -196,7 +197,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     SimplePlot w(500, 500);
-    w.set_extents(-5, -1, 10, 10);
+    w.set_extents(-10, -10, 10, 10);
 
 
     auto edges = tree.get_edges();
@@ -208,3 +209,4 @@ int main(int argc, char *argv[])
     w.show();
     return app.exec();
 }
+
